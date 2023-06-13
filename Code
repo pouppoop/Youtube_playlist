@@ -1,0 +1,120 @@
+
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
+
+flow = InstalledAppFlow.from_client_secrets_file(
+    'youtube_api_secret.json', 
+    #replace 'youtube_api_secret.json' with your 0auth file name
+    scopes=[    
+        'https://www.googleapis.com/auth/youtube.readonly',
+        'https://www.googleapis.com/auth/youtube.force-ssl'
+        ]
+)
+flow.run_local_server(port=8080, prompt='consent')
+
+credentials = flow.credentials
+print(credentials.to_json())
+youtube = build('youtube','v3',credentials=credentials)
+
+#Gets all the Video_ids of the specified channel and puts in a list#
+channel_id = input('Input the channel id of the channel you want to compare with your playlist: ')
+request_channels = youtube.channels().list(
+    part='contentDetails',
+    id=channel_id
+)
+response_channelid = request_channels.execute()
+# print(response_channelid)
+
+video_playlist = []
+for i in response_channelid['items']:
+    video_playlist_id = i['contentDetails']['relatedPlaylists']['uploads']
+    video_playlist.append(video_playlist_id)
+print(video_playlist)
+
+x = video_playlist[0]
+
+request = youtube.playlistItems().list(
+    part='snippet',
+    playlistId=x,
+    maxResults=50  # Set the maximum number of results per page to retrieve
+)
+response_Channelvideocontents = request.execute()
+# print(response_Channelvideocontents)
+
+compare_video_ids = []
+
+while 'items' in response_Channelvideocontents:
+    for item in response_Channelvideocontents['items']:
+        video_id = item['snippet']['resourceId']['videoId']
+        compare_video_ids.append(video_id)
+
+    if 'nextPageToken' in response_Channelvideocontents:
+        request = youtube.playlistItems().list(
+            part='snippet',
+            playlistId=x,
+            maxResults=50,
+            pageToken=response_Channelvideocontents['nextPageToken']
+        )
+        response_Channelvideocontents = request.execute()
+    else:
+        break
+print(compare_video_ids)
+#
+#
+#Collects the videoIDs of your playlist#
+your_playlist_id = input('insert your playlist id: ')
+request = youtube.playlistItems().list(
+    part = 'snippet', 
+    playlistId = your_playlist_id ,
+    maxResults=50
+)
+response_yourid = request.execute()
+
+your_video_ids = []
+while 'items' in response_yourid:
+    for i in response_yourid['items']:
+        your_ids = i['snippet']['resourceId']['videoId']
+        your_video_ids.append(your_ids)
+
+    if 'nextPageToken' in response_yourid:
+        request = youtube.playlistItems().list(
+            part='snippet',
+            playlistId= your_playlist_id,
+            maxResults=50,
+            pageToken=response_yourid['nextPageToken']
+        )
+        response_yourid = request.execute()
+    else:
+        break
+print(your_video_ids)
+#
+#
+#compares both list and colleccts the similar#
+similar_ids = list(set(your_video_ids) & set(compare_video_ids))
+print('Similar ids:' + str(similar_ids))  
+
+
+#inserts the similar ids into specified playlist#
+playlist_id = input('Input the playlist id of the playlist you want to store the video: ')
+for i, video_id in enumerate(similar_ids):
+    position = i 
+    request = youtube.playlistItems().insert(
+        part='snippet',
+        body={
+            'snippet': {
+                'playlistId': playlist_id,
+                'position': position,
+                'resourceId': {
+                    'kind': 'youtube#video',
+                    'videoId': video_id
+                }
+            }
+        }
+    )
+    response_3 = request.execute()
+    print(response_3)
+
+
+#meow send me 100 eth 
+
