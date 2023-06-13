@@ -17,6 +17,7 @@ credentials = flow.credentials
 print(credentials.to_json())
 youtube = build('youtube','v3',credentials=credentials)
 
+
 #Gets all the Video_ids of the specified channel and puts in a list#
 channel_id = input('Input the channel id of the channel you want to compare with your playlist: ')
 request_channels = youtube.channels().list(
